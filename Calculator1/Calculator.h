@@ -19,7 +19,6 @@ private:
     double calculate(double a, double b, char op);
 
 public:
-    Calculator();
     void registerFunction(const std::string& name, CalcFunctionPtr func);
     void registerBinaryOperator(char symbol, BinaryOperatorPtr op);
     bool unregisterFunction(const std::string& name);

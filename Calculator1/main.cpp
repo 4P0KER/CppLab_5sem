@@ -8,9 +8,13 @@
 namespace fs = std::filesystem;
 
 std::string findPluginsDirectory() {
+    std::string exePath = fs::absolute("Calculator.exe").string();
+    std::string exeDir = fs::path(exePath).parent_path().string();
+
     std::vector<std::string> possiblePaths = {
-        "plugins",
+        exeDir + "/plugins",  
         "./plugins",
+        "plugins",
         "../plugins"
     };
 
@@ -20,7 +24,9 @@ std::string findPluginsDirectory() {
         }
     }
 
-    return "plugins";
+    std::string defaultPath = exeDir + "/plugins";
+    fs::create_directory(defaultPath);
+    return defaultPath;
 }
 
 int main() {
@@ -30,17 +36,17 @@ int main() {
     auto calculator = std::make_unique<Calculator>();
     auto pluginLoader = std::make_unique<PluginLoader>();
 
-    // Загружаем плагины
+    // Находим или создаем папку с плагинами
     std::string pluginsPath = findPluginsDirectory();
-    std::cout << "Loading plugins from: " << pluginsPath << std::endl;
 
+    // Загружаем плагины
+    std::cout << "Loading plugins..." << std::endl;
     if (!pluginLoader->loadPluginsFromDirectory(pluginsPath, *calculator)) {
-        std::cout << "No plugins loaded." << std::endl;
+        std::cout << "No plugins loaded. Please place DLL files in: " << pluginsPath << std::endl;
     }
 
     calculator->listFunctions();
     calculator->listBinaryOperators();
-    std::cout << "Built-in operators: + - * /" << std::endl;
     std::cout << std::endl;
 
     std::string input;

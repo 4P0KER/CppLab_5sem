@@ -11,11 +11,10 @@ PluginLoader::~PluginLoader() {
 }
 
 bool PluginLoader::loadPluginsFromDirectory(const std::string& directory, Calculator& calculator) {
-    std::cout << "=== Loading plugins from: " << directory << " ===" << std::endl;
 
     try {
         if (!fs::exists(directory)) {
-            std::cout << "Directory does not exist: " << directory << std::endl;
+            std::cerr << "ERROR: Directory does not exist: " << directory << std::endl;
             return false;
         }
 
@@ -23,7 +22,6 @@ bool PluginLoader::loadPluginsFromDirectory(const std::string& directory, Calcul
 
         for (const auto& entry : fs::directory_iterator(directory)) {
             if (entry.path().extension() == ".dll") {
-                std::cout << "Found DLL: " << entry.path().filename() << std::endl;
 
                 HMODULE hDll = LoadLibraryA(entry.path().string().c_str());
                 if (!hDll) {
@@ -32,21 +30,19 @@ bool PluginLoader::loadPluginsFromDirectory(const std::string& directory, Calcul
                     continue;
                 }
 
-                std::cout << "DLL loaded successfully" << std::endl;
                 bool pluginLoaded = false;
 
+                // Пробуем загрузить бинарный оператор
                 auto createBinaryOp = reinterpret_cast<IBinaryOperator * (*)()>(
                     GetProcAddress(hDll, "createBinaryOperator"));
 
                 if (createBinaryOp) {
-                    std::cout << "Found createBinaryOperator export" << std::endl;
                     try {
                         IBinaryOperator* rawOp = createBinaryOp();
                         BinaryOperatorPtr op(rawOp);
                         char symbol = op->getSymbol();
                         calculator.registerBinaryOperator(symbol, op);
                         loadedLibraries.push_back(hDll);
-                        std::cout << "SUCCESS: Loaded binary operator '" << symbol << "'" << std::endl;
                         loadedAny = true;
                         pluginLoaded = true;
                     }
@@ -55,23 +51,19 @@ bool PluginLoader::loadPluginsFromDirectory(const std::string& directory, Calcul
                         FreeLibrary(hDll);
                     }
                 }
-                else {
-                    std::cout << "No createBinaryOperator export found" << std::endl;
-                }
 
+                // Пробуем загрузить обычную функцию
                 if (!pluginLoaded) {
                     auto createFunc = reinterpret_cast<ICalcFunction * (*)()>(
                         GetProcAddress(hDll, "createFunction"));
 
                     if (createFunc) {
-                        std::cout << "Found createFunction export" << std::endl;
                         try {
                             ICalcFunction* rawFunc = createFunc();
                             CalcFunctionPtr func(rawFunc);
                             std::string funcName = func->getName();
                             calculator.registerFunction(funcName, func);
                             loadedLibraries.push_back(hDll);
-                            std::cout << "SUCCESS: Loaded function: " << funcName << std::endl;
                             loadedAny = true;
                             pluginLoaded = true;
                         }
@@ -79,9 +71,6 @@ bool PluginLoader::loadPluginsFromDirectory(const std::string& directory, Calcul
                             std::cerr << "ERROR creating function: " << e.what() << std::endl;
                             FreeLibrary(hDll);
                         }
-                    }
-                    else {
-                        std::cout << "No createFunction export found" << std::endl;
                     }
                 }
 
@@ -106,5 +95,4 @@ void PluginLoader::unloadAll() {
         FreeLibrary(hDll);
     }
     loadedLibraries.clear();
-    std::cout << "All plugins unloaded" << std::endl;
 }

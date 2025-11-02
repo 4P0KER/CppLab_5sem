@@ -1,37 +1,9 @@
 #include "Calculator.h"
-#include <iostream>
+#include <cmath>
 #include <sstream>
 #include <stdexcept>
+#include <iostream>
 #include <cctype>
-#include <vector>
-#include <cmath>
-
-class SinFunction : public ICalcFunction {
-public:
-    double execute(double arg) override { return sin(arg); }
-    std::string getName() override { return "sin"; }
-};
-
-class CosFunction : public ICalcFunction {
-public:
-    double execute(double arg) override { return cos(arg); }
-    std::string getName() override { return "cos"; }
-};
-
-class SqrtFunction : public ICalcFunction {
-public:
-    double execute(double arg) override {
-        if (arg < 0) throw std::runtime_error("Square root of negative number");
-        return sqrt(arg);
-    }
-    std::string getName() override { return "sqrt"; }
-};
-
-Calculator::Calculator() {
-    functions["sin"] = std::make_shared<SinFunction>();
-    functions["cos"] = std::make_shared<CosFunction>();
-    functions["sqrt"] = std::make_shared<SqrtFunction>();
-}
 
 bool Calculator::isOperator(char c) {
     return binaryOperators.find(c) != binaryOperators.end() ||
@@ -45,8 +17,10 @@ int Calculator::getPriority(char op) {
     }
 
     switch (op) {
-    case '+': case '-': return 1;
-    case '*': case '/': return 2;
+    case '+':
+    case '-': return 1;
+    case '*':
+    case '/': return 2;
     default: return 0;
     }
 }
@@ -103,7 +77,7 @@ double Calculator::calculate(double a, double b, char op) {
     case '/':
         if (b == 0) throw std::runtime_error("Division by zero");
         return a / b;
-    default: throw std::runtime_error("Unknown operator: " + std::string(1, op));
+    default: throw std::runtime_error("Unknown operator");
     }
 }
 
@@ -134,7 +108,7 @@ double Calculator::evaluateExpression(const std::string& expr) {
                 values.push_back(applyFunction(funcName, arg));
             }
             else {
-                throw std::runtime_error("Expected '(' after function name: " + funcName);
+                throw std::runtime_error("Expected '(' after function name");
             }
         }
         else if (expr[i] == '(') {
@@ -142,9 +116,6 @@ double Calculator::evaluateExpression(const std::string& expr) {
         }
         else if (expr[i] == ')') {
             while (!ops.empty() && ops.back() != '(') {
-                if (values.size() < 2) {
-                    throw std::runtime_error("Not enough values for operator");
-                }
                 double b = values.back(); values.pop_back();
                 double a = values.back(); values.pop_back();
                 char op = ops.back(); ops.pop_back();
@@ -154,11 +125,7 @@ double Calculator::evaluateExpression(const std::string& expr) {
             ops.pop_back();
         }
         else if (isOperator(expr[i])) {
-            while (!ops.empty() && ops.back() != '(' &&
-                getPriority(ops.back()) >= getPriority(expr[i])) {
-                if (values.size() < 2) {
-                    throw std::runtime_error("Not enough values for operator");
-                }
+            while (!ops.empty() && getPriority(ops.back()) >= getPriority(expr[i])) {
                 double b = values.back(); values.pop_back();
                 double a = values.back(); values.pop_back();
                 char op = ops.back(); ops.pop_back();
@@ -167,56 +134,38 @@ double Calculator::evaluateExpression(const std::string& expr) {
             ops.push_back(expr[i]);
         }
         else {
-            throw std::runtime_error(std::string("Unexpected character: '") + expr[i] + "'");
+            throw std::runtime_error(std::string("Unexpected character: ") + expr[i]);
         }
     }
 
     while (!ops.empty()) {
-        if (values.size() < 2) {
-            throw std::runtime_error("Not enough values for operator");
-        }
         double b = values.back(); values.pop_back();
         double a = values.back(); values.pop_back();
         char op = ops.back(); ops.pop_back();
         values.push_back(calculate(a, b, op));
     }
 
-    if (values.size() != 1) {
-        throw std::runtime_error("Invalid expression - unable to compute result");
-    }
+    if (values.size() != 1) throw std::runtime_error("Invalid expression");
     return values.back();
 }
 
 void Calculator::registerFunction(const std::string& name, CalcFunctionPtr func) {
     functions[name] = func;
-    std::cout << "Registered function: " << name << std::endl;
-}
-
-bool Calculator::unregisterFunction(const std::string& name) {
-    bool removed = functions.erase(name) > 0;
-    if (removed) {
-        std::cout << "Unregistered function: " << name << std::endl;
-    }
-    return removed;
 }
 
 void Calculator::registerBinaryOperator(char symbol, BinaryOperatorPtr op) {
     binaryOperators[symbol] = op;
-    std::cout << "Registered binary operator: '" << symbol << "'" << std::endl;
+}
+
+bool Calculator::unregisterFunction(const std::string& name) {
+    return functions.erase(name) > 0;
 }
 
 bool Calculator::unregisterBinaryOperator(char symbol) {
-    bool removed = binaryOperators.erase(symbol) > 0;
-    if (removed) {
-        std::cout << "Unregistered binary operator: '" << symbol << "'" << std::endl;
-    }
-    return removed;
+    return binaryOperators.erase(symbol) > 0;
 }
 
 double Calculator::evaluate(const std::string& expr) {
-    if (expr.empty()) {
-        throw std::runtime_error("Empty expression");
-    }
     return evaluateExpression(expr);
 }
 
@@ -229,12 +178,7 @@ bool Calculator::hasBinaryOperator(char symbol) const {
 }
 
 void Calculator::listFunctions() const {
-    if (functions.empty()) {
-        std::cout << "No functions available" << std::endl;
-        return;
-    }
-
-    std::cout << "Available functions (" << functions.size() << "):";
+    std::cout << "Available functions:";
     for (const auto& [name, func] : functions) {
         std::cout << " " << name;
     }
@@ -242,12 +186,7 @@ void Calculator::listFunctions() const {
 }
 
 void Calculator::listBinaryOperators() const {
-    if (binaryOperators.empty()) {
-        std::cout << "No binary operators available" << std::endl;
-        return;
-    }
-
-    std::cout << "Available binary operators (" << binaryOperators.size() << "):";
+    std::cout << "Available binary operators:";
     for (const auto& [symbol, op] : binaryOperators) {
         std::cout << " '" << symbol << "'";
     }
